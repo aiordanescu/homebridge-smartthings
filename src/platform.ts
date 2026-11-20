@@ -15,6 +15,7 @@ import { describeError, redactAxiosError } from './auth/sanitizeError';
 import { isAuthRejection } from './auth/tokenManager';
 import { ArtModeSwitchService } from './services/artModeSwitchService';
 import { TelevisionService } from './services/televisionService';
+import { HomeAssistantAccessories } from './homeAssistant/accessories';
 import {
   extractDisabledComponents,
   hasDisabledComponentsCapability,
@@ -58,6 +59,9 @@ export class IKHomeBridgeHomebridgePlatform implements DynamicPlatformPlugin {
 
   private webhookServer: WebhookServer;
 
+  // Accessories whose state and commands come from Home Assistant instead of SmartThings.
+  public readonly homeAssistant: HomeAssistantAccessories;
+
   // Background re-discovery after startup discovery failed on a transient (network) error.
   private rediscoveryTimer: NodeJS.Timeout | null = null;
   private rateLimitedUntil = 0;
@@ -73,6 +77,8 @@ export class IKHomeBridgeHomebridgePlatform implements DynamicPlatformPlugin {
     public readonly api: API,
   ) {
     this.log.debug('Finished initializing platform:', this.config.name);
+
+    this.homeAssistant = new HomeAssistantAccessories(this.log, this.api, this.config.homeAssistant, PLUGIN_NAME, PLATFORM_NAME);
 
     // Initialize CrashLoopManager first as auth might use it if it fails early.
     // It's a singleton, so getting instance here ensures it's created with platform logger and storage path.
@@ -179,6 +185,7 @@ export class IKHomeBridgeHomebridgePlatform implements DynamicPlatformPlugin {
     this.api.on('shutdown', () => {
       this.log.debug('Shutdown event received — cleaning up resources');
       this.shuttingDown = true;
+      this.homeAssistant.stop();
       if (this.rediscoveryTimer) {
         clearTimeout(this.rediscoveryTimer);
         this.rediscoveryTimer = null;
@@ -195,6 +202,9 @@ export class IKHomeBridgeHomebridgePlatform implements DynamicPlatformPlugin {
 
     this.api.on('didFinishLaunching', async () => {
       this.log.debug('Executed didFinishLaunching callback');
+
+      // Home Assistant accessories don't depend on SmartThings being reachable or authorized.
+      this.homeAssistant.start(this.accessories);
 
       // Warn if the dependent energy flags are set without the parent that activates them.
       if (this.config.ExposeEnergyMonitoring !== true
@@ -439,6 +449,11 @@ export class IKHomeBridgeHomebridgePlatform implements DynamicPlatformPlugin {
             }
           }
 
+          if (this.homeAssistant.deviceIds.has(device.deviceId)) {
+            this.log.debug(`Skipping ${device.label}: it is served from Home Assistant`);
+            continue;
+          }
+
           if (!this.locationIDsToIgnore.find(locationID => device.locationId === locationID)) {
             this.log.debug('Pushing ' + device.label);
             devices.push(device);
@@ -485,6 +500,9 @@ export class IKHomeBridgeHomebridgePlatform implements DynamicPlatformPlugin {
     // of current devices, then unregister them.
     //
     this.accessories.forEach(accessory => {
+      if (this.homeAssistant.deviceIds.has(accessory.UUID)) {
+        return;
+      }
       if (all) {
         this.log.info('Will unregister ' + accessory.context.device?.label);
         accessoriesToRemove.push(accessory);

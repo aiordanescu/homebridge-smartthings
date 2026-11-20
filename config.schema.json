@@ -367,6 +367,48 @@
           "required": ["deviceName"]
         }
       },
+      "homeAssistant": {
+        "title": "Home Assistant backend",
+        "description": "Serve some former SmartThings accessories from Home Assistant while keeping their Apple Home identity (same accessory UUID, AID and IIDs on this bridge). SmartThings discovery skips these devices.",
+        "type": "object",
+        "properties": {
+          "url": {
+            "title": "WebSocket URL",
+            "type": "string",
+            "placeholder": "ws://127.0.0.1:8123/api/websocket"
+          },
+          "token": {
+            "title": "Long-lived access token",
+            "type": "string"
+          },
+          "accessories": {
+            "title": "Accessories",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "smartThingsDeviceId": {
+                  "title": "SmartThings device id (the accessory UUID)",
+                  "type": "string",
+                  "required": true
+                },
+                "name": {
+                  "title": "Name",
+                  "type": "string"
+                },
+                "switch": {
+                  "title": "Switch entity (switch, input_boolean or light)",
+                  "type": "string"
+                },
+                "contactSensor": {
+                  "title": "Contact sensor entity (binary_sensor, on = open)",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
       "ShowOnlyDevices": {
         "title": "Show Only Devices (Whitelist)",
         "type": "array",
