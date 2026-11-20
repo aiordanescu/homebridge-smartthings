@@ -117,7 +117,7 @@ export class HomeAssistantAccessories {
     });
     this.watch(entityId, state => {
       if (state === 'on' || state === 'off') {
-        this.log.debug(`[Home Assistant] ${accessory.displayName}: ${entityId} is ${state}`);
+        this.log.info(`[Home Assistant] ${accessory.displayName}: ${entityId} is ${state}`);
         on.updateValue(state === 'on');
       }
     });
@@ -132,7 +132,7 @@ export class HomeAssistantAccessories {
     contact.onGet(() => toHomeKit(this.knownState(entityId)));
     this.watch(entityId, state => {
       if (state === 'on' || state === 'off') {
-        this.log.debug(`[Home Assistant] ${accessory.displayName}: ${entityId} is ${state}`);
+        this.log.info(`[Home Assistant] ${accessory.displayName}: ${entityId} is ${state}`);
         contact.updateValue(toHomeKit(state));
       }
     });
